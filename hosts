@@ -1,0 +1,6 @@
+[pauline]
+192.168.188.77
+
+[pauline:vars]
+ansible_ssh_user=pi
+

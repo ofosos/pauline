@@ -1,0 +1,146 @@
+---
+- hosts: pauline
+  vars:
+    raspotify: raspotify_0.13.1.librespot.20190416T173925Z.5d2cb32_armhf.deb
+    raspotify_user: raspotify
+
+  remote_user: pi
+
+  tasks:
+
+  - name: disable ipv6
+    sysctl:
+      name: net.ipv6.conf.all.disable_ipv6
+      value: 1
+      state: present
+    become: true
+
+  - name: install pulseaudio and avahi
+    apt:
+      name: "{{ packages }}"
+      update_cache: true
+    vars:
+      packages:
+        - pulseaudio
+        - avahi-daemon
+        - avahi-discover
+        - libnss-mdns
+        - pulseaudio-module-zeroconf
+        - pulseaudio-utils
+    become: true
+
+  - name: enable and start avahi
+    service:
+      name: avahi-daemon
+      state: started
+      enabled: yes
+    become: true
+
+  - name: configure pulseaudio for pulseaudio-module-zeroconf
+    template:
+      src: default.pa.j2
+      dest: /etc/pulse/default.pa
+    become: true
+
+  - name: create raspotify user
+    user:
+      name: "{{ raspotify_user }}"
+      groups: audio
+      shell: /bin/bash
+    become: true
+
+  - name: configure pulseaudio to start as a daemon
+    template:
+      src: pulseaudio.service.j2
+      dest: /etc/systemd/user/pulseaudio.service
+    become: true
+
+  - name: reload systemd
+    command:
+      systemctl daemon-reload
+    become: true
+
+  - name: enable media user linger
+    command:
+      loginctl enable-linger "{{ raspotify_user }}"
+    become: true
+
+  - name: enable pulseaudio server for the media user
+    service:
+      name: pulseaudio
+      enabled: yes
+      scope: user
+    become: yes
+    become_user: "{{ raspotify_user }}"
+
+  - name: configure ALSA to default to Pulse
+    template:
+      src: templates/asound.j2
+      dest: /etc/asound.rc
+    become: true
+
+  - name: copy raspotify over to sys-pauline
+    copy:
+      src: "{{ raspotify }}"
+      dest: "/home/pi/{{ raspotify }}"
+
+  - name: Install raspotify
+    apt: 
+      deb: "/home/pi/{{ raspotify }}"
+      allow_unauthenticated: true
+    become: true
+
+#  - name: create pulse config dir for raspotify
+#    file:
+#      path: /var/cache/raspotify/.pulse
+#      state: directory
+#      mode: 0755
+#      owner: "{{ raspotify_user }}"
+#      group: "{{ raspotify_user }}"
+#    become: true
+
+  - name: configure pulse clients to talk to localhost
+    template:
+      src: templates/raspotify.pulse.j2
+      dest: /etc/pulse/client.conf.d/01-server.conf
+      owner: root
+      group: root
+
+    become: true
+
+  - name: install mopidy
+    apt:
+      name: "{{ packages }}"
+    vars:
+      packages:
+        - mopidy
+        - mopidy-podcast
+        - mopidy-somafm
+        - mopidy-tunein
+        - mopidy-internetarchive
+        - mopidy-local-sqlite
+        - mopidy-doc
+        - python-pip
+    become: true
+
+  - name: install iris
+    pip:
+      name: Mopidy-Iris
+    become: true
+
+  - name: install iris sudoers file
+    template:
+      src: templates/iris.sudo.j2
+      dest: /etc/sudoers.d/020_iris
+      owner: root
+      group: root
+    become: true
+
+  - name: configure mopidy
+    template:
+      src: templates/mopidy.conf.j2
+      dest: /etc/mopidy/mopidy.conf
+      owner: mopidy
+      group: root
+
+    become: true

@@ -1,0 +1,16 @@
+[Unit]
+After=sound.target network.target avahi-daemon.service
+Requires=sound.target
+Wants=avahi-daemon.service
+Description=PulseAudio Sound System
+ 
+[Service]
+Type=dbus
+BusName=org.pulseaudio.Server
+BusName=org.PulseAudio1
+ExecStart=/usr/bin/pulseaudio -vv
+ExecStop=/usr/bin/pulseaudio --kill
+Restart=always
+ 
+[Install]
+WantedBy=default.target
