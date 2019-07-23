@@ -16,6 +16,19 @@ Requirements
  - A Raspberry Pi 3
  - A vanilla Raspbian Buster image
 
+# Running
+
+Activate serial console in image/disable bluetooth.
+
+Run serial automation code (not finished).
+
+Run Ansible with (requires SSH config):
+
+```
+export ANSIBLE_SSH_PIPELINING=1
+ansible-playbook -i hosts pauline.yaml
+```
+
 # Copyright
 
 Copyright (c) 2019, Mark Meyer (mark@ofosos.org)
